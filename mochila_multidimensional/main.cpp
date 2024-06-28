@@ -17,7 +17,7 @@ using namespace std;
 // Parámetros del algoritmo genético
 const int POPULATION_SIZE = 30; // Trabajamos con una población constante
 const int NUM_GENERATIONS = 30;
-const double MUTATION_RATE = 0.1;
+const double MUTATION_RATE = 0.3;
 //const double MATING_RATE = 0.5;
 const double CROSSOVER_RATE = 0.8; // Invesión
 //const int TOURNAMENT_SIZE = 3;
@@ -46,7 +46,7 @@ ItemClass classes[NUM_CLASSES] = { // Clases con sus respectivos items
 };
 
 // Contra estos comparamos los pesos de los items
-int capacity[NUM_DIMENSIONS] = {10, 10, 10}; // Arreglo de "pesos" 
+int capacity[NUM_DIMENSIONS] = {15, 15, 15}; // Arreglo de "pesos" 
 
 // Forma de guardar una solución o "individual"
 struct Individual {
@@ -100,9 +100,27 @@ void print_individual(const Individual &individual){
 
 }
 
+bool is_valid_chromosome(const vector<int> &chromosome){    
+    vector<int> total_weights(NUM_DIMENSIONS, 0);  // Inicializamos en cero los pesos
+    
+    for (int i = 0; i < NUM_CLASSES; i++) {
+        Item item = classes[i].items[chromosome[i]];
+        
+        for (int j = 0; j < NUM_DIMENSIONS; j++) {
+            total_weights[j] += item.weights[j];
+        }
+    }
+    
+    for (int j = 0; j < NUM_DIMENSIONS; j++) {
+        if (total_weights[j] > capacity[j]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 vector<Individual> initial_population(){
     // Creamos la población inicial de manera randonómica
-    // Pueden haber soluciones inválidas
     vector<Individual> population;
     
     for (int i = 0; i < POPULATION_SIZE; i++) {
@@ -110,9 +128,12 @@ vector<Individual> initial_population(){
         for (int j = 0; j < NUM_CLASSES; j++) {
             // Elijo aleatoriamente un item por clase de items
             chromo[j] = rand() % NUM_ITEMS_PER_CLASS; 
-        }        
-        population.push_back(Individual(chromo)); // Usamos constructor
-    }   
+        }
+//        if (is_valid_chromosome(chromo))
+            population.push_back(Individual(chromo)); // Usamos constructor
+//        else
+//            i--;
+    }
     
     return population;
 }
@@ -203,6 +224,24 @@ Individual multi_cut_crossover(const Individual &parent1, const Individual &pare
     return off;
 }
 
+void mutate_individual(Individual & offspring){
+    int cont = 0;
+    int chromo_size = offspring.chromosome.size();
+    int num_mutated_genes = round(chromo_size * MUTATION_RATE);
+   
+    while(cont < num_mutated_genes){ // Muto cierto número de genes del cromosoma
+        int random_index = rand() % chromo_size;
+        int old_item = offspring.chromosome[random_index];
+        
+        while (old_item == offspring.chromosome[random_index]){ // Nuevo item
+            offspring.chromosome[random_index] = rand() % NUM_ITEMS_PER_CLASS;
+        }      
+        cont++;
+    }    
+    offspring.fitness = fitness(offspring.chromosome);
+}
+
+
 void genetic_algorithm() {
     vector<int> best_solution;
     int best_fitness = 0;
@@ -233,7 +272,16 @@ void genetic_algorithm() {
         Individual offspring = multi_cut_crossover(parents[0], parents[1]);
         cout << "Hijo: " << endl;
         print_individual(offspring);
+        // Mutate offspring by changing randomly chosen t genes;
+        mutate_individual(offspring);
+        cout << "Hijo mutado: " << endl;
+        print_individual(offspring);
+        // Repair offspring using GATF(offspring) in Algorithm
         
+        // Replace an individual in the population with offspring;
+        
+        
+        // Guardo la mejor solución
     }
 
     return;
