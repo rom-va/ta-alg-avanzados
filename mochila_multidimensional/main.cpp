@@ -15,7 +15,7 @@
 using namespace std;
 
 // Parámetros del algoritmo genético
-const int POPULATION_SIZE = 30; // Trabajamos con una población constante
+const int POPULATION_SIZE = 5; // Trabajamos con una población constante
 const int NUM_GENERATIONS = 30;
 const double MUTATION_RATE = 0.3;
 //const double MATING_RATE = 0.5;
@@ -53,7 +53,7 @@ struct Individual {
     vector<int> chromosome; // Cada elemento de chromosome corresponde a una clase de items
     int fitness;
 
-    Individual(vector<int> chromo) : chromosome(chromo), fitness(0) {}
+    Individual(vector<int> chromo) : chromosome(chromo), fitness(1) {}
 };
 
 // Función "fitness" de una solución. Es la suma de los valores de los items
@@ -161,7 +161,34 @@ void set_proportions(const  vector<double> & proportions, int roulette[]){
     }
 }
 
-void proportional_selection(const vector<Individual> &population, vector<Individual> &parents){
+void calculate_reverse_proportions(const vector<Individual> &population, vector<double> & proportions){
+    int population_total_fitness = 0;
+    
+    for(int i=0; i < population.size(); i++)
+        population_total_fitness += population[i].fitness;
+    
+    for(int i=0; i < population.size(); i++){
+        double proportion = round( 100*(double) ( 1 - population[i].fitness / population_total_fitness ) );        
+        proportions.push_back(proportion);
+    }
+}
+
+int proportional_selection_replace(const vector<Individual> &population){ // Devuelve index del individuo a reemplazar
+    
+    vector<double> proportions;      
+    int roulette[100]{-1};
+    calculate_reverse_proportions(population, proportions);
+    set_proportions(proportions, roulette);    
+    
+    int index = rand()%100;
+    while (roulette[index] <= -1)
+        index = rand()%100;
+    
+    return roulette[index];    
+}
+
+
+void proportional_selection_parents(const vector<Individual> &population, vector<Individual> &parents){
     // Seleccionamos por medio de una ruleta con conveniencia
     int npadres, cont=0;
     vector<double> proportions;      
@@ -241,6 +268,21 @@ void mutate_individual(Individual & offspring){
     offspring.fitness = fitness(offspring.chromosome);
 }
 
+int best_individual(const vector<Individual> &population){ // Índice de mejor individuo
+    int best_fitness = 0;
+    int best_individual = 0;
+    for (int i = 0; i < population.size(); i++) {
+        if (population[i].fitness > best_fitness){
+            best_fitness = population[i].fitness;
+            best_individual = i;
+        }
+    }
+    return best_individual;
+}
+
+// ------------------ Parte de restauración -----------------------------------
+
+
 
 void genetic_algorithm() {
     vector<int> best_solution;
@@ -250,7 +292,7 @@ void genetic_algorithm() {
     vector<Individual> population = initial_population();
     
     // Comprobamos la población inicial
-    evaluate_population(population);
+    //evaluate_population(population);
     print_population(population);
     
     // Imprimimos mejor fitness
@@ -265,7 +307,7 @@ void genetic_algorithm() {
     for (int g = 0; g < NUM_GENERATIONS; ++g) {
         // Choose parent1 and parent2 from population by proportional selection
         vector<Individual> parents; // Elegimos dos padres                
-        proportional_selection(population, parents);
+        proportional_selection_parents(population, parents);
         cout << "Padres elegidos: " << endl;
         print_population(parents);
         // Make offspring by recombining parent1 and parent2 using multi-cut circular crossover
@@ -278,12 +320,31 @@ void genetic_algorithm() {
         print_individual(offspring);
         // Repair offspring using GATF(offspring) in Algorithm
         
-        // Replace an individual in the population with offspring;
         
+        // Replace an individual in the population with offspring;        
+        int individual_to_replace = proportional_selection_replace(population);
+        population.erase(population.begin() + individual_to_replace);
+        population.push_back(offspring);
         
-        // Guardo la mejor solución
+        print_population(population);
+        
+        // Guardo la mejor solución        
+        auto best_individual = max_element(population.begin(), population.end(), [](Individual& a, Individual& b) {
+            return a.fitness < b.fitness;
+        });      
+        cout << "Poblacion actual, best_fitness = " << best_individual->fitness << endl;
+        
+        if (best_individual->fitness > best_fitness){
+            best_fitness = best_individual->fitness;
+            best_solution = best_individual->chromosome;
+        }        
     }
 
+    cout << "Mejor solucion del ejercicio: ";
+    for (int i = 0; i < best_solution.size(); i++) {
+        cout << best_solution[i] << " ";
+    }
+    cout <<  " Fitness: " << best_fitness << endl;
     return;
 }
 
@@ -297,4 +358,3 @@ int main(int argc, char** argv) {
     
     return 0;
 }
-
