@@ -1,5 +1,7 @@
 #include <cstdlib>
+#include <iostream>
 #include <cmath>
+#include <algorithm>
 using namespace std;
 
 #include "funciones_repair.h"
@@ -66,10 +68,83 @@ void tendency(const TendencyParameters& tp, vector<int>& chromosome, ItemClass c
 }
 
 // Función para reparar una solución inválida con la función de tendencia
-void RHTF(const TendencyParameters& tp, vector<int>& chromosome, ItemClass classes[], int capacity[]) {
-    while (!is_valid_chromosome(chromosome, classes, capacity)) {
-        tendency(tp, chromosome, classes, capacity); // Aplicar tendency hasta que el cromosoma sea viable
-        Individual ind(chromosome);
-        print_individual(ind);
+bool RHTF(const TendencyParameters& tp, vector<int>& chromosome, ItemClass classes[], int capacity[]) {
+//    cout << "-------------------------------------------------------------" << endl;
+    for (int i = 0; i < 30; i++) {
+        tendency(tp, chromosome, classes, capacity); // Modificamos el cromosoma
+//        Individual ind(chromosome);
+//        print_individual(ind);
+        if (is_valid_chromosome(chromosome, classes, capacity)) return true;
     }
+    return false; // No se logró reparar
+}
+
+// Algoritmo genético para aproximar los parámetros de tendencia - GAFT para una solución
+vector<TendencyParameters> GATF(const vector<Individual>& solutions, ItemClass classes[], int capacity []) {
+    // Generamos de manera aleatoria la población inicial   
+    vector<Individual> tendency_population = create_initial_tendency_population(100);
+    print_population(tendency_population);
+    evaluate_tendency_population(tendency_population, classes, capacity, solutions);
+    print_population(tendency_population);
+    
+    double best_fitness = 0;
+    vector<int> best_solution;
+    
+    for (int g = 0; g < NUM_TENDENCY_GENERATIONS; g++) {   
+        // Elegimos los padres por medio de selección proporcional
+        vector<Individual> parents;
+        proportional_selection_parents(tendency_population, parents);
+        cout << "Padres: " << endl;
+        print_population(parents);
+        // Generamos el offspring por uniform crossover
+        Individual offspring = uniform_crossover(parents[0], parents[1]);
+        cout << "Hijo: " << endl;
+        print_individual(offspring);
+        
+        // Mutate offspring by swapping randomly chosen two genes
+        mutate_swap_2_genes(offspring);
+        cout << "Hijo mutado: "<< endl;
+        print_individual(offspring);
+        
+        // Get the feasibility of offspring from RHTF(offspring, given solution s) in Algorithm
+        offspring.fitness = fitness_tendency(offspring.chromosome, classes, capacity, solutions);
+        cout << "Hijo mutado con fitness calculado: " << endl;
+        print_individual(offspring);
+        
+        // Replace an individual in the population with offspring
+        int individual_to_replace = proportional_selection_replace(tendency_population);
+        tendency_population.erase(tendency_population.begin() + individual_to_replace);
+        tendency_population.push_back(offspring);    
+        cout << "Nueva población:" << endl;
+        print_population(tendency_population);
+        
+        // Guardo la mejor solución        
+        auto best_individual = max_element(tendency_population.begin(), tendency_population.end(), [](Individual& a, Individual& b) {
+            return a.fitness < b.fitness;
+        });      
+        cout << "Poblacion actual, best_fitness = " << best_individual->fitness << endl;
+        
+        if (best_individual->fitness > best_fitness){
+            best_fitness = best_individual->fitness;
+            best_solution = best_individual->chromosome;
+        }
+    }
+    
+    cout << "Mejor solucion del ejercicio: ";
+    for (int i = 0; i < best_solution.size(); i++) {
+        cout << best_solution[i] << " ";
+    }
+    cout <<  " Fitness: " << best_fitness << endl;
+    
+    // Conversión a TendencyParameters
+    vector<TendencyParameters> vtp;    
+    
+    for (int i = 0; i < tendency_population.size(); i++) {
+        Individual ind = tendency_population[i];
+        TendencyParameters tp(ind.chromosome[0], ind.chromosome[1],ind.chromosome[2],ind.chromosome[3],
+                ind.chromosome[4],ind.chromosome[5]);
+        vtp.push_back(tp);
+    }
+
+    return vtp;
 }
