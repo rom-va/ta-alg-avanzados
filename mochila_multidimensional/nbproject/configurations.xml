@@ -4,6 +4,10 @@
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
                    projectFiles="true">
+      <itemPath>estructuras_genetico_MKP.h</itemPath>
+      <itemPath>estructuras_repair.h</itemPath>
+      <itemPath>funciones_genetico_MKP.h</itemPath>
+      <itemPath>funciones_repair.h</itemPath>
     </logicalFolder>
     <logicalFolder name="ResourceFiles"
                    displayName="Resource Files"
@@ -12,6 +16,8 @@
     <logicalFolder name="SourceFiles"
                    displayName="Source Files"
                    projectFiles="true">
+      <itemPath>funciones_genetico_MKP.cpp</itemPath>
+      <itemPath>funciones_repair.cpp</itemPath>
       <itemPath>main.cpp</itemPath>
     </logicalFolder>
     <logicalFolder name="TestFiles"
@@ -36,6 +42,18 @@
       </toolsSet>
       <compileType>
       </compileType>
+      <item path="estructuras_genetico_MKP.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="estructuras_repair.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="funciones_genetico_MKP.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="funciones_genetico_MKP.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="funciones_repair.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="funciones_repair.h" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="main.cpp" ex="false" tool="1" flavor2="0">
       </item>
     </conf>
@@ -59,6 +77,18 @@
           <developmentMode>5</developmentMode>
         </asmTool>
       </compileType>
+      <item path="estructuras_genetico_MKP.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="estructuras_repair.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="funciones_genetico_MKP.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="funciones_genetico_MKP.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="funciones_repair.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="funciones_repair.h" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="main.cpp" ex="false" tool="1" flavor2="0">
       </item>
     </conf>
