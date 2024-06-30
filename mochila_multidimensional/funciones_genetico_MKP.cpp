@@ -28,7 +28,7 @@ void evaluate_population(vector<Individual>& population, ItemClass classes[], in
     for (Individual& individual : population) { // Modificamos los ind. de population
         individual.fitness = fitness(individual.chromosome, classes);
         if (!is_valid_chromosome(individual.chromosome, classes, capacity)){
-            individual.fitness = -1;
+            individual.fitness = 0;
         }
     }
 }
