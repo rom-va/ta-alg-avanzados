@@ -8,6 +8,8 @@
 using namespace std;
 
 #include "funciones_genetico_MKP.h"
+#include "estructuras_repair.h"
+#include "funciones_repair.h"
 
 // Función "fitness" de una solución. Es la suma de los valores de los items
 int fitness(const vector<int>& solution, ItemClass classes[]) {
@@ -20,12 +22,15 @@ int fitness(const vector<int>& solution, ItemClass classes[]) {
     return total_value;
 }
 
-void evaluate_population(vector<Individual>& population, ItemClass classes[]) {
+void evaluate_population(vector<Individual>& population, ItemClass classes[], int capacity []) {
     int total_value = 0;
     
     for (Individual& individual : population) { // Modificamos los ind. de population
         individual.fitness = fitness(individual.chromosome, classes);
-    }    
+        if (!is_valid_chromosome(individual.chromosome, classes, capacity)){
+            individual.fitness = -1;
+        }
+    }
 }
 
 void print_population(const vector<Individual>& population) {
@@ -33,7 +38,7 @@ void print_population(const vector<Individual>& population) {
     for (int k = 0; k < population.size(); k++) {
         cout << "Solución N°: "<< k+1 << " | ";
         cout << "Cromosoma: ";
-        for (int i = 0; i < NUM_CLASSES; ++i) {
+        for (int i = 0; i < population[0].chromosome.size(); ++i) {
             cout << population[k].chromosome[i] << " ";
         }
         cout << "Fitness: " << population[k].fitness;
@@ -45,7 +50,7 @@ void print_individual(const Individual &individual){
     cout << "Individuo:" << endl;    
     
     cout << "Cromosoma: ";
-    for (int i = 0; i < NUM_CLASSES; ++i) {
+    for (int i = 0; i < individual.chromosome.size(); ++i) {
         cout << individual.chromosome[i] << " ";
     }
     cout << "Fitness: " << individual.fitness;
@@ -99,6 +104,10 @@ void calculate_proportions(const vector<Individual> &population, vector<double> 
     
     for(int i=0; i < population.size(); i++){
         double proportion = round( 100*(double) population[i].fitness / population_total_fitness );        
+        if (population[i].fitness == 0){
+            // Si su fitnes = 0, le colocamos una proporción de 1
+            proportion = 1;
+        }
         proportions.push_back(proportion);
     }
 }
@@ -142,6 +151,7 @@ int proportional_selection_replace(const vector<Individual> &population){ // Dev
 
 
 void proportional_selection_parents(const vector<Individual> &population, vector<Individual> &parents){
+    parents.erase(parents.begin(), parents.end());
     // Seleccionamos por medio de una ruleta con conveniencia
     int npadres, cont=0;
     vector<double> proportions;      
@@ -241,16 +251,17 @@ void genetic_algorithm(ItemClass classes[], int capacity[]) {
     vector<Individual> population = initial_population();
     
     // Comprobamos la población inicial
-    //evaluate_population(population, classes);
+    evaluate_population(population, classes, capacity);
     print_population(population);
     
     // Imprimimos mejor fitness
-    auto best_individual = max_element(population.begin(), population.end(), [](Individual& a, Individual& b) {
-        return a.fitness < b.fitness;
-    });
-    best_solution.push_back(best_individual->fitness);
-
-    cout << "Poblacion inicial, best_fitness = " << best_individual->fitness << endl;
+//    auto best_individual = max_element(population.begin(), population.end(), [](Individual& a, Individual& b) {
+//        return a.fitness < b.fitness;
+//    });
+//    cout << "Poblacion inicial, best_fitness = " << best_individual->fitness << endl;
+    
+    // GAFT para generar los parámetros de tendencia
+    vector<TendencyParameters> vtp = GATF(population, classes, capacity);
     
     // Generaciones (loop)
     for (int g = 0; g < NUM_GENERATIONS; ++g) {
@@ -268,25 +279,37 @@ void genetic_algorithm(ItemClass classes[], int capacity[]) {
         cout << "Hijo mutado: " << endl;
         print_individual(offspring);
         // Repair offspring using GATF(offspring) in Algorithm
+        bool repaired_flag = false;
+        for (int k = 0; k < vtp.size(); k++) {
+            if (RHTF(vtp[k], offspring.chromosome, classes, capacity)){
+                cout << "Hijo REPARADO" << endl;
+                repaired_flag = true;
+                break;
+            }
+        }
+        offspring.fitness = fitness(offspring.chromosome,classes);
+        print_individual(offspring);
         
-        
-        // Replace an individual in the population with offspring;        
-        int individual_to_replace = proportional_selection_replace(population);
-        population.erase(population.begin() + individual_to_replace);
-        population.push_back(offspring);
-        
-        print_population(population);
-        
-        // Guardo la mejor solución        
-        auto best_individual = max_element(population.begin(), population.end(), [](Individual& a, Individual& b) {
-            return a.fitness < b.fitness;
-        });      
-        cout << "Poblacion actual, best_fitness = " << best_individual->fitness << endl;
-        
-        if (best_individual->fitness > best_fitness){
-            best_fitness = best_individual->fitness;
-            best_solution = best_individual->chromosome;
-        }        
+        // Los siguientes pasos solo son aplicados a soluciones válidas
+        if (repaired_flag){
+            // Replace an individual in the population with offspring;        
+            int individual_to_replace = proportional_selection_replace(population);
+            population.erase(population.begin() + individual_to_replace);
+            population.push_back(offspring);
+
+            print_population(population);
+
+            // Guardo la mejor solución        
+            auto best_individual = max_element(population.begin(), population.end(), [](Individual& a, Individual& b) {
+                return a.fitness < b.fitness;
+            });      
+            cout << "Poblacion actual, best_fitness = " << best_individual->fitness << endl;
+
+            if (best_individual->fitness > best_fitness){
+                best_fitness = best_individual->fitness;
+                best_solution = best_individual->chromosome;
+            } 
+        }       
     }
 
     cout << "Mejor solucion del ejercicio: ";
@@ -297,3 +320,75 @@ void genetic_algorithm(ItemClass classes[], int capacity[]) {
     return;
 }
 
+vector<Individual> create_initial_tendency_population(int n){ // n: rango 
+    // Creamos la población inicial de manera randonómica
+    vector<Individual> t_population;  
+    
+    for (int i = 0; i < TENDENCY_POPULATION_SIZE; i++) {
+        vector<int> chromosome(NUM_TENDENCY_PARAMETERS);
+        for (int j = 0; j < NUM_TENDENCY_PARAMETERS; j++) {            
+            chromosome[j] = rand() % n; 
+        }
+        t_population.push_back(Individual(chromosome)); // Usamos constructor
+    }
+    
+    return t_population;
+}
+
+double fitness_tendency(const vector<int> & chromosome, ItemClass classes[], int capacity[], 
+        vector<Individual> solutions){
+    // Evalúo cuántas soluciones los parámetros del cromosoma convierten en válidas    
+    int cont = 0;
+    
+    // Armo TendencyParameters
+    TendencyParameters parameters(chromosome[0], chromosome[1], chromosome[2],chromosome[3], chromosome[4],
+            chromosome[5]);
+    for (int i = 0; i < solutions.size(); i++) {        
+        if (RHTF(parameters, solutions[i].chromosome, classes, capacity)){
+            cont++;
+        }
+    }
+    return (double) cont/solutions.size();    
+}
+
+void evaluate_tendency_population(vector<Individual> & tendency_population, 
+        ItemClass classes [], int capacity [], const vector<Individual> & solutions){
+    int total_value = 0;
+    
+    for (Individual& individual : tendency_population) { // Modificamos los ind. de population
+        individual.fitness = fitness_tendency(individual.chromosome, classes, capacity, solutions);
+    }    
+}
+
+Individual uniform_crossover(const Individual & parent1, 
+        const Individual & parent2) {
+    
+    int chromosome_size = parent1.chromosome.size();
+    vector<int> offspring(chromosome_size);
+
+    // Uniform crossover
+    for (int i = 0; i < chromosome_size; i++) {
+        if (rand() % 2 == 0) {
+            offspring[i] = parent1.chromosome[i]; 
+        } else {
+            offspring[i] = parent2.chromosome[i];
+        }
+    }
+    return Individual(offspring);
+}
+
+void mutate_swap_2_genes(Individual & offspring){
+    int chromosome_size = offspring.chromosome.size();
+
+    // Selección de dos posiciones distintas
+    int pos1 = rand() % chromosome_size;
+    int pos2 = rand() % chromosome_size;
+    
+    while (pos1 == pos2) 
+        pos2 = rand() % chromosome_size;
+    
+    // Swap
+    int aux = offspring.chromosome[pos1];
+    offspring.chromosome[pos1] = offspring.chromosome[pos2];
+    offspring.chromosome[pos2] = aux;    
+}
