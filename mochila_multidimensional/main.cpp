@@ -1,7 +1,7 @@
 /* 
  * File:   main.cpp
  * Grupo: 
- * Algoritmo genético para el problema de la mochila multidimensional
+ * Algoritmo genético con heurística de reparación para el problema de la mochila multidimensional
  */
 
 #include <cstdlib>
